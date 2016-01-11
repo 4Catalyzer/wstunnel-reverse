@@ -1,5 +1,5 @@
 {
-  "name": "wstunnel",
+  "name": "reverse-wstunnel",
   "version": "1.1.1",
   "description": "tcp tunnel over websocket",
   "main": "./lib/wst.js",
