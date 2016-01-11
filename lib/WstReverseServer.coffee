@@ -29,6 +29,12 @@ module.exports = class wst_server
       apps.setDefaultApp webapp
     apps.bindToHttpServer @httpServer
 
+  # you can overwrite this method if you want to authenticate incoming
+  # websocket requests. to reject the request, return an object of the form
+  # {httpStatus, reason}. If nothing is returned, if nothing is returnd, the
+  # authentication is considered passed
+  authenticate: (request) =>
+
   # localAddr:  [addr:]port, the local address to listen at, i.e. localhost:8888, 8888, 0.0.0.0:8888
   start: (localAddr, cb)->
     { host, port } = parseAddress(localAddr)
@@ -37,9 +43,14 @@ module.exports = class wst_server
       if cb then cb(err)
 
       @wsServer.on 'request', (request)=>
+        { httpRequest } = request
+        authResult = @authenticate(httpRequest)
+        if authResult
+          log "websocket connection failed. Bad authentication"
+          request.reject(authResult.httpStatus, authResult.reason)
+          return
 
         wsConn = request.accept('tunnel-protocol', request.origin);
-        httpRequest = request.httpRequest
         tunnelPort = url.parse(httpRequest.url, true).query.port
 
         tcpServer = net.createServer();
@@ -56,3 +67,4 @@ module.exports = class wst_server
           tcpServer.close(() => log "tcpServer closed")
 
         log "opened a new tunnel entrance at #{tunnelPort}"
+
