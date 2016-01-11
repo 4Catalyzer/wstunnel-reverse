@@ -1,3 +1,3 @@
 #!/usr/bin/env node
 wst = require("../lib/wst")
-wst.bin(wst.server, wst.client)
+wst.bin(wst.server, wst.client, wst.reverseServer, wst.reverseClient)

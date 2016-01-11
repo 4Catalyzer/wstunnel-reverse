@@ -1,5 +1,5 @@
 
-module.exports = (Server, Client)->
+module.exports = (Server, Client, ReverseServer, ReverseClient)->
   optimist = require('optimist')
   argv = optimist
     .usage("""
@@ -24,6 +24,8 @@ module.exports = (Server, Client)->
        """)
     .string("s")
     .string("t")
+    .string("r")
+    .default("r", false)
     .string("proxy")
     .alias('t', "tunnel")
     .boolean('c')
@@ -36,6 +38,10 @@ module.exports = (Server, Client)->
     .describe("c", "accpet any certificates")
     .argv
   ;
+
+  if argv.r
+    Server = ReverseServer
+    Client = ReverseClient
 
   if argv.s
     if argv.t

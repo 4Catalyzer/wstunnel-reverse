@@ -4,7 +4,8 @@
   "description": "tcp tunnel over websocket",
   "main": "./lib/wst.js",
   "scripts": {
-    "test": "nodeunit test/test.js"
+    "test": "nodeunit test/test.js",
+    "build": "coffee -cm ./"
   },
   "repository": "https://github.com/mhzed/wstunnel",
   "author": {
@@ -30,6 +31,7 @@
     "machine-uuid": "1.0.7"
   },
   "devDependencies": {
+    "coffee-script": "~1.8.0",
     "source-map-support": "0.1.2"
   },
   "bin": {
