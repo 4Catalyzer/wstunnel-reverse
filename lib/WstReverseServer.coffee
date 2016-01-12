@@ -35,6 +35,11 @@ module.exports = class wst_server
   # authentication is considered passed
   authenticate: (request) =>
 
+  # closes the tunnel
+  close: () =>
+    @httpServer.close()
+    @wsServer.shutDown()
+
   # localAddr:  [addr:]port, the local address to listen at, i.e. localhost:8888, 8888, 0.0.0.0:8888
   start: (localAddr, cb)->
     { host, port } = parseAddress(localAddr)
