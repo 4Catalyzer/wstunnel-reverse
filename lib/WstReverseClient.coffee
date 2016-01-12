@@ -22,6 +22,7 @@ module.exports = class wst_client extends require("events").EventEmitter
   # incoming requests are tunneled by the client to `targetAddress` in the
   # client network
   start: (tunnelPort, wsHostUrl, targetAddress, optionalHeaders, cb)->
+    @connections = {}
     [ @targetHost, @targetPort ] = targetAddress.split(":")
     if typeof optionalHeaders == "function"
       cb = optionalHeaders
@@ -37,32 +38,43 @@ module.exports = class wst_client extends require("events").EventEmitter
 
     wsClient.on "connectFailed", (error) => @emit "connectFailed", error
 
-    wsClient.on "connect", (wsConn) =>
+    wsClient.once "connect", (wsConn) =>
       @emit "tunnel", wsConn
-      wsConn.on "message", (msg) => @handleIncomingRequest(wsConn, msg)
+      @wsConn = wsConn
+      wsConn.on "message", (msg) => @handleIncomingRequest(msg)
 
     wsClient.on "close", () => log "WS closed"
 
-  handleIncomingRequest: (wsConnection, message) =>
+  # open a new connection for each new incoming identifier. Each identifier
+  # corresponds to an open TCP connection on the server
+  openConnection: (identifier, onOpen) =>
+    tcpConn = @connections[identifier]
+
+    if !tcpConn
+      tcpConn = net.connect {host: @targetHost, port: @targetPort}
+      @connections[identifier] = tcpConn
+
+      tcpConn.once "connect", () =>
+        log "TCP connection established"
+        tcpConn.on "drain", (chunk) => log "TCP connection drain"
+        tcpConn.on "end", (chunk) => log "TCP connection end"
+        tcpConn.on "error", (chunk) => log "TCP connection error"
+        tcpConn.on "close", (chunk) => @connections[identifier] = undefined
+        tcpConn.on "data", (chunk) =>
+          log "TCP connection data"
+          chunk = decoder.encode(chunk, identifier)
+          @wsConn.sendBytes(chunk)
+
+        onOpen(tcpConn)
+
+    else
+      onOpen(tcpConn)
+
+
+  handleIncomingRequest: (message) =>
     log "WS message received"
-    log @targetHost, @targetPort
-    tcpConn = net.connect {host: @targetHost, port: @targetPort}
-
     { chunk, identifier } = decoder.decode(message.binaryData)
-
-    tcpConn.on "connect", () =>
-      log "TCP connection established"
-      tcpConn.on "drain", (chunk) => log "TCP connection drain"
-      tcpConn.on "end", (chunk) => log "TCP connection end"
-      tcpConn.on "error", (chunk) => log "TCP connection error"
-      tcpConn.on "close", (chunk) => log "TCP connection close"
-
-      tcpConn.on "data", (chunk) =>
-        log "TCP connection data"
-        chunk = decoder.encode(chunk, identifier)
-        wsConnection.sendBytes(chunk)
-
-      tcpConn.write(chunk)
+    @openConnection identifier, (tcpConn) => tcpConn.write(chunk)
 
   authorize: (urlString, headers) =>
     auth = url.parse(urlString).auth
